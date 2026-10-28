@@ -1,0 +1,10 @@
+{
+  "uiVariant": "classic",
+  "bugs": {
+    "BUG-01": true,
+    "BUG-02": true,
+    "BUG-03": true,
+    "BUG-04": true,
+    "BUG-05": true
+  }
+}

@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+data/
+artifacts/
+reports/*.json
+reports/*.md
+!reports/.gitkeep
+*.log
+ci-output/

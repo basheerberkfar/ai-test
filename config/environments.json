@@ -1,0 +1,18 @@
+{
+  "_comment": "Only environments listed here may be targeted by the AI agent. Navigation outside allowedOrigins is blocked.",
+  "environments": [
+    {
+      "id": "local-demo",
+      "name": "Local demo (seeded)",
+      "baseUrl": "http://localhost:5173",
+      "allowedOrigins": ["http://localhost:5173"],
+      "apiPathPrefix": "/api/demo/",
+      "authTokenStorageKey": "demo.session",
+      "resettable": true,
+      "accounts": {
+        "therapist": { "emailEnv": "TEST_THERAPIST_EMAIL", "passwordEnv": "TEST_THERAPIST_PASSWORD" },
+        "admin": { "emailEnv": "TEST_ADMIN_EMAIL", "passwordEnv": "TEST_ADMIN_PASSWORD" }
+      }
+    }
+  ]
+}

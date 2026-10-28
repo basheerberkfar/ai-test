@@ -1,0 +1,138 @@
+name: AI E2E
+
+# Smoke on pull requests, regression nightly, exploratory weekly, any mode on demand.
+on:
+  pull_request:
+    paths:
+      - "apps/**"
+      - "server/**"
+      - "stories/**"
+      - "regression/**"
+      - "prompts/**"
+      - "config/**"
+      - "scripts/ci.ts"
+      - "package.json"
+      - "package-lock.json"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Execution mode
+        type: choice
+        options: [smoke, regression, exploratory]
+        default: regression
+      stories:
+        description: "Story ids (comma-separated), 'all' or 'affected'"
+        default: all
+      max_cost_usd:
+        description: Total AI cost cap for this job (USD)
+        default: "10"
+  schedule:
+    - cron: "0 3 * * 1-5" # nightly regression (Mon–Fri)
+    - cron: "0 4 * * 6" # weekly exploratory (Sat)
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-e2e-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Pull requests from forks never receive secrets. Say so instead of silently passing.
+  fork-pr-notice:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "::warning::AI E2E smoke tests were not run: pull requests from forks do not get API credentials. A maintainer can run the 'AI E2E' workflow manually after reviewing the code."
+          echo "## AI E2E — not run (fork pull request, no credentials)" >> "$GITHUB_STEP_SUMMARY"
+
+  ai-e2e:
+    # Only same-repository PRs (trusted collaborators), schedules and manual runs reach the secret.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    # Store ANTHROPIC_API_KEY / OPENAI_API_KEY as secrets of this GitHub environment and protect it
+    # (required reviewers and/or deployment branch rules) to control which code may use them.
+    environment: ai-e2e
+    env:
+      # Seeded demo accounts of the isolated test environment — not real secrets.
+      TEST_THERAPIST_EMAIL: therapist@demo.clinic
+      TEST_THERAPIST_PASSWORD: Therapist#2024
+      TEST_ADMIN_EMAIL: admin@demo.clinic
+      TEST_ADMIN_PASSWORD: Admin#2024
+      AI_PROVIDER: ${{ vars.AI_PROVIDER || 'anthropic' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # needed for affected-story detection
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # No install scripts: dependency code does not run during install.
+      - run: npm ci --ignore-scripts
+
+      - name: Install Chrome
+        id: chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
+      - name: Resolve mode and stories
+        id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+          SCHEDULE: ${{ github.event.schedule }}
+          IN_MODE: ${{ inputs.mode }}
+          IN_STORIES: ${{ inputs.stories }}
+          IN_COST: ${{ inputs.max_cost_usd }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          case "$EVENT" in
+            pull_request)      mode=smoke;       stories=affected; base="origin/$BASE_REF"; cost="" ;;
+            workflow_dispatch) mode="$IN_MODE";  stories="$IN_STORIES"; base="origin/${{ github.event.repository.default_branch }}"; cost="$IN_COST" ;;
+            schedule)          if [ "$SCHEDULE" = "0 4 * * 6" ]; then mode=exploratory; else mode=regression; fi
+                               stories=all; base=""; cost="" ;;
+          esac
+          {
+            echo "mode=$mode"
+            echo "stories=$stories"
+            echo "base=$base"
+            echo "cost=$cost"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run AI E2E (${{ steps.plan.outputs.mode }})
+        # The key is scoped to this step only.
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+          MODE: ${{ steps.plan.outputs.mode }}
+          STORIES: ${{ steps.plan.outputs.stories }}
+          BASE: ${{ steps.plan.outputs.base }}
+          COST: ${{ steps.plan.outputs.cost }}
+        run: |
+          args=(--mode "$MODE" --stories "$STORIES" --output ci-output)
+          [ -n "$BASE" ] && args+=(--base "$BASE")
+          [ -n "$COST" ] && args+=(--max-cost "$COST")
+          npm run ci -- "${args[@]}"
+
+      - name: Upload reports and evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-e2e-${{ steps.plan.outputs.mode }}-${{ github.run_id }}
+          path: |
+            ci-output/summary.md
+            ci-output/summary.json
+            ci-output/reports/
+            ci-output/artifacts/
+            ci-output/*.log
+            ci-output/data/workspace.db
+            regression/scenarios.json
+          if-no-files-found: warn
+          retention-days: 14

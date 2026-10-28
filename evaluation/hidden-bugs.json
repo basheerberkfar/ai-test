@@ -1,0 +1,50 @@
+{
+  "_warning": "PRIVATE EVALUATION FILE. Never include this content in agent prompts, stories, regression scenarios or the demo UI. Only server/evaluation reads it, after a run has finished.",
+  "bugs": [
+    {
+      "id": "BUG-01",
+      "category": "Duplicate form submission",
+      "title": "Save button stays enabled while a patient is being created",
+      "description": "The Create Patient form does not disable the submit button while the request is in flight (~1s server latency) and the backend has no idempotency protection. Double-clicking Save (or pressing Enter twice) creates duplicate patient records.",
+      "reproduction": ["Log in as Therapist", "Open Add Patient", "Fill valid data", "Double-click Save", "Observe two identical patients in the list / two POST /api/demo/patients 201 responses"],
+      "fixedBehavior": "The button is disabled and shows 'Saving…' while the request is pending; only one record is created.",
+      "matchKeywords": [["duplicate", "double", "twice", "two records", "two patients", "multiple submissions", "idempot"]]
+    },
+    {
+      "id": "BUG-02",
+      "category": "Incorrect filtering",
+      "title": "Status filter is ignored when a search term is entered",
+      "description": "GET /api/demo/patients drops the status condition whenever the search parameter is non-empty, so combining search with a status filter returns patients of every status.",
+      "reproduction": ["Open Patients", "Select status 'Active'", "Search for 'a'", "Observe Inactive/On Hold/Discharged patients in the results"],
+      "fixedBehavior": "Search and status filters are combined with AND.",
+      "matchKeywords": [["filter", "status"], ["search", "ignored", "inactive", "discharged", "on hold", "wrong status", "combined", "mismatch"]]
+    },
+    {
+      "id": "BUG-03",
+      "category": "Missing validation",
+      "title": "Email format is not validated",
+      "description": "Both client and server only check that the email field is non-empty. Values such as 'not-an-email' are accepted and persisted.",
+      "reproduction": ["Open Add Patient", "Enter 'not-an-email' as Email with otherwise valid data", "Save", "Observe the patient is created"],
+      "fixedBehavior": "The form shows 'Enter a valid email address.' and the API returns 422.",
+      "matchKeywords": [["email"], ["invalid", "format", "validat", "malformed", "accepted", "not-an-email"]]
+    },
+    {
+      "id": "BUG-04",
+      "category": "Broken authorization",
+      "title": "Therapists can delete patients through the API",
+      "description": "The UI only offers Delete to administrators, but DELETE /api/demo/patients/:id does not check the role. A therapist session can delete any patient.",
+      "reproduction": ["Log in as Therapist", "Note a patient id", "Send DELETE /api/demo/patients/{id} with the therapist session", "Observe 204 and the patient disappears"],
+      "fixedBehavior": "The API returns 403 'Only administrators can delete patients.' for therapists.",
+      "matchKeywords": [["delete", "deletion", "remove"], ["therapist", "authoriz", "permission", "role", "403", "privilege", "admin"]]
+    },
+    {
+      "id": "BUG-05",
+      "category": "Incorrect data persistence",
+      "title": "Notes entered on creation are not saved",
+      "description": "POST /api/demo/patients discards the notes field. Notes appear to be accepted, but are empty on the patient details page and in the API response. Editing an existing patient saves notes correctly.",
+      "reproduction": ["Create a patient with Notes 'Prefers morning sessions'", "Open the patient details", "Observe Notes is empty"],
+      "fixedBehavior": "Notes are persisted on creation and displayed on the details page.",
+      "matchKeywords": [["note"], ["not saved", "missing", "empty", "lost", "not persisted", "discarded", "blank", "dropped", "not displayed", "null"]]
+    }
+  ]
+}

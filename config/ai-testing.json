@@ -1,0 +1,95 @@
+{
+  "_comment": "Cost, routing, execution modes, CI policy and baseline assumptions for AI test runs. Env vars in .env.example override selected values.",
+
+  "pricing": {
+    "_comment": "USD per million tokens. Edit to match your contract.",
+    "models": {
+      "claude-fable-5-1": { "input": 10, "output": 50, "cacheRead": 0.25, "cacheWrite": 12.5 },
+      "claude-opus-5-5": { "input": 4, "output": 20, "cacheRead": 0.2, "cacheWrite": 5 },
+      "claude-sonnet-5-5": { "input": 2, "output": 10, "cacheRead": 0.2, "cacheWrite": 2.5 },
+      "claude-haiku-5-5": { "input": 0.1, "output": 0.5, "cacheRead": 0.01, "cacheWrite": 0.125 },
+      "gpt-5": { "input": 1.25, "output": 10, "cacheRead": 0.125, "cacheWrite": 0 },
+      "gpt-5-mini": { "input": 0.25, "output": 2, "cacheRead": 0.025, "cacheWrite": 0 }
+    },
+    "infrastructure": {
+      "_comment": "Browser/tool charges. 0 for a local Chrome; set when using a hosted browser grid or paid tools.",
+      "browserPerMinuteUsd": 0,
+      "perBrowserActionUsd": 0,
+      "perScreenshotToModelUsd": 0,
+      "ciRunnerPerMinuteUsd": 0.008
+    }
+  },
+
+  "routing": {
+    "_comment": "Which model tier each role uses. 'economy' for routine execution, 'advanced' for reasoning-heavy work.",
+    "anthropic": { "economy": "claude-sonnet-5-5", "advanced": "claude-opus-5-5" },
+    "openai": { "economy": "gpt-5-mini", "advanced": "gpt-5" },
+    "roles": {
+      "planner": "advanced",
+      "executor": "economy",
+      "explorer": "advanced",
+      "verifier": "advanced"
+    },
+    "escalateIncompleteToAdvanced": true
+  },
+
+  "limits": {
+    "_comment": "Run-level hard limits shared by all modes unless a mode overrides them.",
+    "stepsPerScenario": 40,
+    "maxModelCalls": 250,
+    "maxBrowserActions": 300,
+    "maxScenarioRetries": 1,
+    "apiRetries": 2,
+    "runMinutes": 30,
+    "maxCostUsd": 8,
+    "screenshotsToModelPerScenario": 3,
+    "outlineMaxChars": 9000
+  },
+
+  "modes": {
+    "smoke": {
+      "description": "Happy Path + critical approved regression scenarios. For pull requests.",
+      "regression": "critical",
+      "exploratoryCharters": 0,
+      "plan": false,
+      "limits": { "maxCostUsd": 2.5, "maxModelCalls": 90, "maxBrowserActions": 120, "runMinutes": 12, "stepsPerScenario": 35 }
+    },
+    "regression": {
+      "description": "Happy Path + all approved regression scenarios. For merges, releases and manual runs.",
+      "regression": "all",
+      "exploratoryCharters": 0,
+      "plan": true,
+      "limits": { "maxCostUsd": 6, "runMinutes": 25 }
+    },
+    "exploratory": {
+      "description": "Happy Path + AI-chosen exploratory charters that propose new regression scenarios. Scheduled or manual.",
+      "regression": "none",
+      "exploratoryCharters": 4,
+      "plan": true,
+      "limits": { "maxCostUsd": 8, "runMinutes": 30 }
+    }
+  },
+
+  "ci": {
+    "_comment": "Required-check policy. Exit codes: 0 pass, 1 verified failure, 2 incomplete (Blocked/Inconclusive), 3 infrastructure error.",
+    "failOnVerifiedFailures": true,
+    "failOnIncomplete": true,
+    "blockingFindingSeverities": ["critical", "high"],
+    "exploratoryFindingsBlocking": false,
+    "maxTotalCostUsd": 12,
+    "runAllWhenChanged": ["server/agents/", "server/browser/", "server/execution/", "prompts/", "config/", "package.json", "package-lock.json"]
+  },
+
+  "baseline": {
+    "_comment": "ASSUMPTIONS for a hand-written Playwright suite covering the same scenarios. Replace with your team's numbers; the AI side is measured.",
+    "engineerHourlyUsd": 75,
+    "authoringHoursPerScenario": 2.5,
+    "maintenanceHoursPerScenarioPerMonth": 0.5,
+    "uiChangeBreakageHoursPerScenario": 0.75,
+    "uiChangesPerMonth": 2,
+    "ciMinutesPerScenarioRun": 0.4,
+    "aiReviewHoursPerProposal": 0.15,
+    "aiReviewHoursPerIncompleteRun": 0.25,
+    "runsPerMonth": { "smoke": 120, "regression": 30, "exploratory": 4 }
+  }
+}

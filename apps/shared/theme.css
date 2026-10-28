@@ -1,0 +1,61 @@
+/* Apple-inspired design tokens shared by both apps. */
+@theme {
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "SF Mono", ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
+
+  --color-canvas: #f5f5f7;
+  --color-surface: #ffffff;
+  --color-ink: #1d1d1f;
+  --color-muted: #6e6e73;
+  --color-subtle: #86868b;
+  --color-hairline: rgba(0, 0, 0, 0.08);
+  --color-fill: rgba(118, 118, 128, 0.12);
+  --color-fill-strong: rgba(118, 118, 128, 0.2);
+  --color-accent: #007aff;
+  --color-accent-hover: #0068d9;
+  --color-success: #34c759;
+  --color-warning: #ff9500;
+  --color-danger: #ff3b30;
+
+  --radius-xl: 14px;
+  --radius-2xl: 18px;
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.04);
+  --shadow-pop: 0 8px 40px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.08);
+
+  --animate-fade-in: fade-in 0.25s ease-out;
+  --animate-scale-in: scale-in 0.2s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  --animate-shimmer: shimmer 1.4s linear infinite;
+
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes scale-in {
+    from { opacity: 0; transform: translate(-50%, -48%) scale(0.97); }
+    to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  }
+  @keyframes shimmer {
+    from { background-position: -200% 0; }
+    to { background-position: 200% 0; }
+  }
+}
+
+@layer base {
+  html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+  body { background: var(--color-canvas); color: var(--color-ink); font-family: var(--font-sans); font-feature-settings: "cv11", "ss01"; letter-spacing: -0.006em; }
+  ::selection { background: rgba(0, 122, 255, 0.18); }
+  :focus-visible { outline: 3px solid rgba(0, 122, 255, 0.35); outline-offset: 1px; border-radius: 8px; }
+}
+
+@utility glass {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+@utility skeleton {
+  background: linear-gradient(90deg, rgba(0,0,0,0.04) 25%, rgba(0,0,0,0.08) 37%, rgba(0,0,0,0.04) 63%);
+  background-size: 400% 100%;
+  animation: var(--animate-shimmer);
+  border-radius: 8px;
+}
